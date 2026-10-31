@@ -159,6 +159,7 @@ export default function App() {
   // ── UI state (discrete only — fast values go through refs) ──
   const [screen, setScreenState] = useState<Screen>('menu');
   const [bootReady, setBootReady] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [cam, setCamState] = useState(0);
   const [burned, setBurned] = useState([false, false, false, false]);
@@ -440,21 +441,48 @@ export default function App() {
 
   /** Final step → drop the training wheels and run the real shift. */
   const launchRealShift = useCallback(() => {
+    inputRef.current.space = false;
+    sliderRef.current = 60;
     S.current.guideMode = false;
+    S.current.lastSpace = false;
+    S.current.beepAcc = 0;
+    S.current.typing = null;
+    S.current.reaperAmt = 0;
     guideActiveRef.current = false;
+    guideVisited.current.clear();
+    guideParryDone.current = false;
+    guideBreachDone.current = false;
+    guideLockRef.current = false;
+    logLinesRef.current = [];
+    setLines([]);
+    setTypingId(null);
     setGuideMode(false);
+    setGuideStep(0);
+    setCam(0);
+    setBurned([false, false, false, false]);
+    setParry(null);
+    setBreach(false);
+    setDoses(3);
+    setPhase(1);
+    setThreatNode(3);
+    setTilt(false);
+    setDecay(false);
+    setMeltOn(false);
+    setEkg(false);
+    setSubtitle(null);
+    setToast(null);
+    setRecharging(false);
+    setShowManual(false);
+    rootRef.current?.classList.remove('adr-shake', 'impact', 'reboot');
     gameRef.current = new GameCore(
       onEvent,
       () => sliderRef.current,
       (text, urgent) => audioRef.current?.speak(text, { urgent }) ?? 2.5,
     );
-    S.current.reaperAmt = 0;
-    setDoses(3);
-    setThreatNode(3);
     audioRef.current?.uiBlip();
     S.current.transStart = performance.now();
     setScreen('transition');
-  }, [onEvent, setScreen]);
+  }, [onEvent, setCam, setScreen]);
 
   // ── boot: renderer, textures, audio, game, rAF loop ──
   useEffect(() => {
@@ -464,6 +492,7 @@ export default function App() {
     try {
       renderer = new PostRenderer(canvas);
     } catch {
+      setBootError('The graphics renderer could not start on this device. Try updating the browser or enabling hardware acceleration.');
       return;
     }
     rendererRef.current = renderer;
@@ -486,6 +515,8 @@ export default function App() {
     ]).then(() => {
       S.current.bootDone = true;
       setBootReady(true);
+    }).catch(() => {
+      setBootError('One or more game assets could not be loaded. Check your connection and reload the tape.');
     });
 
     const menuClock = window.setInterval(() => setClockNow(new Date()), 1000);
@@ -496,41 +527,53 @@ export default function App() {
       const g = gameRef.current;
       if (!g) return;
       if (st.last === 0) st.last = now;
-      let dt = Math.min(0.05, (now - st.last) / 1000);
+      let elapsed = Math.max(0, (now - st.last) / 1000);
       st.last = now;
-      if (now < st.hitchUntil) dt = 0; // impact-frame hitch: time itself stutters
+      if (now < st.hitchUntil) elapsed = 0; // brief impact hitch
+      const dt = Math.min(0.05, elapsed); // visual interpolation remains frame-rate stable
 
       const space = inputRef.current.space && st.screen === 'playing';
       const t = now / 1000;
 
       // ── advance the simulation ──
-      if (st.screen === 'playing' && dt > 0) {
-        g.update(dt, camRef.current, inputRef.current.space);
-        if (space !== st.lastSpace) {
-          audioRef.current?.setRecharge(space, g.signal / 100);
-          st.lastSpace = space;
-          setRecharging(space);
-        }
-        // heart monitor — slows as the signal dies
-        st.beepAcc += dt;
-        const interval = 1.35 - (g.signal / 100) * 0.75;
-        if (st.beepAcc > interval) {
-          st.beepAcc = 0;
-          audioRef.current?.beep(1150, g.signal < 25 ? 0.05 : 0.075);
+      if (st.screen === 'playing' && elapsed > 0 && g.running) {
+        // rAF is suspended in background tabs and throttled on slow devices.
+        // Catch up in bounded steps so game rules continue to use real elapsed time.
+        let remaining = elapsed;
+        while (remaining > 0 && st.screen === 'playing' && g.running) {
+          const step = Math.min(0.05, remaining);
+          g.update(step, camRef.current, inputRef.current.space);
+          remaining = Math.max(0, remaining - step);
         }
 
-        // JUDGE MODE — advance the step once the judge has really done the thing
-        if (guideActiveRef.current) {
-          const stp = GUIDE_STEPS[guideStepRef.current];
-          if (stp) {
-            const done =
-              (stp.id === 'cams' && guideVisited.current.size >= 4) ||
-              (stp.id === 'thermal' && guideVisited.current.has(3)) ||
-              (stp.id === 'signal' && g.signal >= 85) ||
-              (stp.id === 'parry' && guideParryDone.current) ||
-              (stp.id === 'breach' && guideBreachDone.current) ||
-              (stp.id === 'adr' && g.doses < 3);
-            if (done) guideNext();
+        if (st.screen === 'playing' && g.running) {
+          if (space !== st.lastSpace) {
+            audioRef.current?.setRecharge(space, g.signal / 100);
+            st.lastSpace = space;
+            setRecharging(space);
+          }
+
+          // Heart monitor — slows as the signal dies.
+          st.beepAcc += elapsed;
+          const interval = 1.35 - (g.signal / 100) * 0.75;
+          if (st.beepAcc > interval) {
+            st.beepAcc = 0;
+            audioRef.current?.beep(1150, g.signal < 25 ? 0.05 : 0.075);
+          }
+
+          // JUDGE MODE — advance once the player has actually performed the action.
+          if (guideActiveRef.current) {
+            const stp = GUIDE_STEPS[guideStepRef.current];
+            if (stp) {
+              const done =
+                (stp.id === 'cams' && guideVisited.current.size >= 4) ||
+                (stp.id === 'thermal' && guideVisited.current.has(3)) ||
+                (stp.id === 'signal' && g.signal >= 85) ||
+                (stp.id === 'parry' && guideParryDone.current) ||
+                (stp.id === 'breach' && guideBreachDone.current) ||
+                (stp.id === 'adr' && g.doses < 3);
+              if (done) guideNext();
+            }
           }
         }
       }
@@ -713,8 +756,10 @@ export default function App() {
       if (e.repeat) return;
       const g = gameRef.current;
       if (e.code === 'Space') {
-        e.preventDefault();
-        inputRef.current.space = true;
+        if (S.current.screen === 'playing') {
+          e.preventDefault();
+          inputRef.current.space = true;
+        }
         return;
       }
       if (S.current.screen !== 'playing' || !g) return;
@@ -737,6 +782,12 @@ export default function App() {
     };
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') inputRef.current.space = false;
+    };
+    const releaseSpace = () => {
+      inputRef.current.space = false;
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) releaseSpace();
     };
     const firstGesture = () => {
       audioRef.current?.ensure();
