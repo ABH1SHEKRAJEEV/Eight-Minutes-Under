@@ -795,10 +795,14 @@ export default function App() {
     };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
+    window.addEventListener('blur', releaseSpace);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('pointerdown', firstGesture);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', releaseSpace);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pointerdown', firstGesture);
       if (decayInterval.current) window.clearInterval(decayInterval.current);
       if (subtitleTimeout.current) window.clearTimeout(subtitleTimeout.current);
