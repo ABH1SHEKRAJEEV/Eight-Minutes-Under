@@ -1742,3 +1742,60 @@ body {
   .cam-panel { gap: 6px; }
   .cam-label { font-size: 16px; }
 }
+
+
+/* Visible keyboard focus for all interactive controls. */
+:where(button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+.freq-slider:focus-visible {
+  outline: 2px solid var(--phos);
+  outline-offset: 4px;
+}
+
+.touch-charge,
+.touch-parry { display: none; }
+
+.boot-error {
+  width: min(520px, calc(100vw - 40px));
+  text-align: center;
+  padding: 24px;
+  border: 1px solid var(--panel-line);
+  background: rgba(9, 12, 9, 0.94);
+  box-sizing: border-box;
+}
+
+.boot-error p {
+  color: var(--bone);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 18px 0;
+}
+
+@media (max-width: 700px) {
+  .touch-charge,
+  .touch-parry {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px;
+    margin-top: 10px;
+    color: var(--phos);
+    border-color: var(--phos-dim);
+    touch-action: none;
+    user-select: none;
+  }
+
+  .touch-parry { color: var(--amber); border-color: #4a3c22; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
