@@ -1474,3 +1474,271 @@ body {
   .game-root.impact,
   .breach-beacon { animation: none; }
 }
+
+/* ── small-screen layout ─────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .menu {
+    padding: 18px 18px 22px;
+    overflow-y: auto;
+  }
+
+  .menu-top {
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .menu-ident {
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .ident-1 {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+  }
+
+  .ident-2 {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
+  .ident-3 { font-size: 13px; }
+
+  .clock-face {
+    width: 58px;
+    height: 58px;
+  }
+
+  .clock-read {
+    font-size: 17px;
+    letter-spacing: 0.04em;
+  }
+
+  .clock-sub {
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+
+  .menu-title-block {
+    margin: 5vh 0 0;
+  }
+
+  .kicker {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .game-title {
+    font-size: clamp(48px, 15vw, 82px);
+  }
+
+  .title-mid { margin-left: 0.35em; }
+  .title-low { margin-left: 0.85em; }
+
+  .tagline {
+    max-width: 36ch;
+    font-size: 10px;
+    line-height: 1.6;
+    letter-spacing: 0.1em;
+  }
+
+  .menu-items {
+    margin-top: 28px;
+    gap: 8px;
+  }
+
+  .menu-item {
+    gap: 8px;
+    font-size: 22px;
+    flex-wrap: wrap;
+  }
+
+  .menu-item-go { font-size: 28px; }
+  .mi-hint { font-size: 10px; letter-spacing: 0.08em; }
+
+  .menu-controls {
+    margin-top: 18px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ctrl-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .key { font-size: 14px; }
+
+  .warn-line {
+    font-size: 9px;
+    line-height: 1.5;
+    letter-spacing: 0.08em;
+  }
+
+  .menu-camtag { display: none; }
+  .monitor-glow { left: 50%; width: 220px; }
+
+  .manual {
+    width: calc(100vw - 28px);
+    max-height: 88vh;
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  .manual-title {
+    font-size: 18px;
+    line-height: 1.45;
+    letter-spacing: 0.12em;
+  }
+
+  .manual-body { grid-template-columns: 1fr; gap: 14px; }
+
+  .hud {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+
+  .hud-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .cam-panel {
+    grid-column: 1 / -1;
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .cam-label {
+    font-size: 19px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .clock-panel { padding: 8px 10px; }
+  .shift-timer { font-size: 36px; }
+
+  .threat-panel {
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .phase-name {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
+  .proximity { gap: 5px; flex-wrap: wrap; }
+  .prox-label { font-size: 8px; letter-spacing: 0.1em; }
+  .prox-sector { font-size: 13px; white-space: normal; }
+
+  .cam-bank {
+    position: static;
+    transform: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .cam-btn {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: 24px minmax(0, 1fr) 10px;
+    gap: 5px;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+
+  .cam-name {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 10px;
+  }
+
+  .freq-panel,
+  .vitals-panel,
+  .terminal {
+    position: relative;
+    inset: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    transform: none;
+    width: auto;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .freq-head {
+    gap: 8px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+
+  .parry-window {
+    flex-wrap: wrap;
+    font-size: 16px;
+  }
+
+  .terminal { min-height: 100px; }
+  .term-line { font-size: 15px; }
+
+  .subtitle {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    max-width: none;
+    font-size: 12px;
+  }
+
+  .toast {
+    position: fixed;
+    top: 12px;
+    max-width: calc(100vw - 30px);
+    width: max-content;
+    text-align: center;
+    box-sizing: border-box;
+    font-size: 18px;
+  }
+
+  .guide-card {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: auto;
+    box-sizing: border-box;
+    order: 10;
+  }
+
+  .guide-title { font-size: 22px; }
+  .guide-body { font-size: 12px; }
+  .breach-card {
+    top: 12%;
+    width: calc(100% - 32px);
+    padding: 12px;
+    box-sizing: border-box;
+  }
+  .breach-title { font-size: 25px; }
+  .breach-sub { font-size: 11px; line-height: 1.5; }
+}
+
+@media (max-width: 380px) {
+  .menu { padding-inline: 12px; }
+  .menu-item { font-size: 19px; }
+  .menu-item-go { font-size: 24px; }
+  .ctrl-grid { grid-template-columns: 1fr; }
+  .cam-panel { gap: 6px; }
+  .cam-label { font-size: 16px; }
+}
