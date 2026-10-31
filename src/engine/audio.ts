@@ -29,8 +29,15 @@ export class HorrorAudio {
       if (this.ctx.state === 'suspended') void this.ctx.resume();
       return;
     }
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new AC();
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    // Audio is an enhancement, not a requirement. Unsupported browsers should still play.
+    if (!AC) return;
+    let ctx: AudioContext;
+    try {
+      ctx = new AC();
+    } catch {
+      return;
+    }
     this.ctx = ctx;
 
     const comp = ctx.createDynamicsCompressor();
