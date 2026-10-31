@@ -59,7 +59,7 @@ export class GameCore {
   doses = 3;
   drainUntil = -1;      // adrenaline 3× drain window
   shakeUntil = -1;      // adrenaline CSS-shake window
-  breach: { tStart: number; hold: number } | null = null;
+  breach: { tStart: number; hold: number; armed: boolean } | null = null;
   parry: ParryState | null = null;
   melt = 0;
   /** Judge Mode: threat contained, no death, no timeline — learn by doing. */
@@ -107,7 +107,7 @@ export class GameCore {
   forceBreach() {
     if (!this.running || this.breach) return;
     this.reaperNode = BOOTH;
-    this.breach = { tStart: this.t, hold: 0 };
+    this.breach = { tStart: this.t, hold: 0, armed: false };
     this.emit({ type: 'breachStart' });
     this.emit({ type: 'moved', node: BOOTH });
   }
@@ -117,7 +117,8 @@ export class GameCore {
   }
 
   update(dt: number, cam: number, space: boolean) {
-    if (!this.running) return;
+    if (!this.running || !Number.isFinite(dt) || dt <= 0) return;
+    dt = Math.min(dt, 0.05);
     this.t += dt;
     const t = this.t;
 
@@ -178,7 +179,12 @@ export class GameCore {
 
     // ── breach: it is at the door. Hold SPACE to discharge. ──
     if (this.breach) {
-      if (space) {
+      // A charge already being held before the breach cannot repel it.
+      // The player must release once after the breach begins, then press again.
+      if (!space) {
+        this.breach.armed = true;
+        this.breach.hold = Math.max(0, this.breach.hold - dt * 1.6);
+      } else if (this.breach.armed) {
         this.breach.hold += dt / 0.9;
         this.signal = Math.min(100, this.signal + 5 * dt);
         if (this.breach.hold >= 1) {
@@ -189,8 +195,6 @@ export class GameCore {
           this.emit({ type: 'impact' });
           this.emit({ type: 'terminal', text: '> SURGE DISCHARGED. ENTITY REPELLED TWO SECTORS.' });
         }
-      } else {
-        this.breach.hold = Math.max(0, this.breach.hold - dt * 1.6);
       }
       if (this.breach && !this.training && t - this.breach.tStart > 6.5) {
         this.finish('defeat', { type: 'defeat', cause: 'breach' });
@@ -211,7 +215,7 @@ export class GameCore {
         if (this.reaperNode !== from) {
           this.emit({ type: 'moved', node: this.reaperNode });
           if (this.reaperNode === BOOTH) {
-            this.breach = { tStart: t, hold: 0 };
+            this.breach = { tStart: t, hold: 0, armed: false };
             this.emit({ type: 'breachStart' });
           } else if (this.reaperNode === 0 || this.reaperNode === 1 || this.phase >= 2) {
             this.emit({ type: 'impact' }); // adjacent room — the lights bow
@@ -282,7 +286,8 @@ export class GameCore {
 
   /** Player slams ENTER — is the slider on the target frequency? */
   confirmParry(value: number) {
-    if (!this.parry || this.parry.stage !== 'window') return;
+    if (!Number.isFinite(value) || !this.parry || this.parry.stage !== 'window') return;
+    value = Math.min(120, Math.max(20, value));
     this.resolveParry(value);
   }
 
