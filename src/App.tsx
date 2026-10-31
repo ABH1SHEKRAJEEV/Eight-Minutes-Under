@@ -190,6 +190,7 @@ export default function App() {
   const guideStepRef = useRef(0);
   const guideLockRef = useRef(false);
   const guideVisited = useRef<Set<number>>(new Set());
+  const guideThreatSeen = useRef(false);
   const guideParryDone = useRef(false);
   const guideBreachDone = useRef(false);
 
@@ -394,6 +395,19 @@ export default function App() {
   const guideNext = useCallback(() => {
     if (guideLockRef.current) return;
     if (guideStepRef.current >= GUIDE_STEPS.length - 1) return;
+    const stepId = GUIDE_STEPS[guideStepRef.current]?.id;
+    const g = gameRef.current;
+    const ready =
+      stepId === 'welcome' ||
+      stepId === 'prox' ||
+      (stepId === 'cams' && guideVisited.current.size >= 4) ||
+      (stepId === 'thermal' && guideVisited.current.has(3)) ||
+      (stepId === 'signal' && (g?.signal ?? 0) >= 85) ||
+      (stepId === 'parry' && guideParryDone.current) ||
+      (stepId === 'threat' && guideThreatSeen.current) ||
+      (stepId === 'breach' && guideBreachDone.current) ||
+      (stepId === 'adr' && (g?.doses ?? 3) < 3);
+    if (!ready) return;
     guideLockRef.current = true;
     guideParryDone.current = false;
     guideBreachDone.current = false;
@@ -419,7 +433,8 @@ export default function App() {
       g.reaperFreezeUntil = -1;
     }
     if (step?.id === 'breach') g?.forceBreach();
-    if (step?.id === 'cams') guideVisited.current.clear();
+    if (step?.id === 'cams' || step?.id === 'thermal') guideVisited.current.clear();
+    if (step?.id === 'threat') guideThreatSeen.current = false;
   }, [guideStep, guideMode]);
 
   const beginGuide = useCallback(() => {
@@ -430,6 +445,7 @@ export default function App() {
     S.current.guideMode = true;
     guideActiveRef.current = true;
     guideVisited.current.clear();
+    guideThreatSeen.current = false;
     guideParryDone.current = false;
     guideBreachDone.current = false;
     setGuideStep(0);
@@ -496,16 +512,23 @@ export default function App() {
       const g = gameRef.current;
       if (!g) return;
       if (st.last === 0) st.last = now;
-      let dt = Math.min(0.05, (now - st.last) / 1000);
+      const elapsed = Math.max(0, (now - st.last) / 1000);
       st.last = now;
-      if (now < st.hitchUntil) dt = 0; // impact-frame hitch: time itself stutters
+      const dt = Math.min(0.05, elapsed);
 
       const space = inputRef.current.space && st.screen === 'playing';
       const t = now / 1000;
 
       // ── advance the simulation ──
-      if (st.screen === 'playing' && dt > 0) {
-        g.update(dt, camRef.current, inputRef.current.space);
+      if (st.screen === 'playing' && elapsed > 0) {
+        // requestAnimationFrame is throttled in background tabs. Simulate all
+        // elapsed slices on return so the 8-minute shift cannot be paused.
+        let remaining = elapsed;
+        while (remaining > 0.000001 && st.screen === 'playing') {
+          const step = Math.min(0.05, remaining);
+          g.update(step, camRef.current, inputRef.current.space);
+          remaining -= step;
+        }
         if (space !== st.lastSpace) {
           audioRef.current?.setRecharge(space, g.signal / 100);
           st.lastSpace = space;
@@ -528,6 +551,7 @@ export default function App() {
               (stp.id === 'thermal' && guideVisited.current.has(3)) ||
               (stp.id === 'signal' && g.signal >= 85) ||
               (stp.id === 'parry' && guideParryDone.current) ||
+              (stp.id === 'threat' && guideThreatSeen.current) ||
               (stp.id === 'breach' && guideBreachDone.current) ||
               (stp.id === 'adr' && g.doses < 3);
             if (done) guideNext();
@@ -714,14 +738,17 @@ export default function App() {
       const g = gameRef.current;
       if (e.code === 'Space') {
         e.preventDefault();
-        inputRef.current.space = true;
+        if (S.current.screen === 'playing') inputRef.current.space = true;
         return;
       }
       if (S.current.screen !== 'playing' || !g) return;
       if (e.key >= '1' && e.key <= '4') {
         const c = Number(e.key) - 1;
-        if (guideActiveRef.current) guideVisited.current.add(c);
         if (!g.burned[c]) {
+          const stepId = GUIDE_STEPS[guideStepRef.current]?.id;
+          if (guideActiveRef.current && stepId === 'cams') guideVisited.current.add(c);
+          if (guideActiveRef.current && stepId === 'thermal' && c === 3) guideVisited.current.add(3);
+          if (guideActiveRef.current && stepId === 'threat' && c === 1) guideThreatSeen.current = true;
           setCam(c);
           audioRef.current?.uiBlip();
         } else {
@@ -742,13 +769,21 @@ export default function App() {
       audioRef.current?.ensure();
       if (S.current.screen === 'menu') audioRef.current?.startRain();
     };
+    const releaseHeldInput = () => { inputRef.current.space = false; };
+    const onVisibilityChange = () => {
+      if (document.hidden) releaseHeldInput();
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('pointerdown', firstGesture);
+    window.addEventListener('blur', releaseHeldInput);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('pointerdown', firstGesture);
+      window.removeEventListener('blur', releaseHeldInput);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       if (decayInterval.current) window.clearInterval(decayInterval.current);
       if (subtitleTimeout.current) window.clearTimeout(subtitleTimeout.current);
     };
@@ -765,6 +800,7 @@ export default function App() {
   }, [setScreen]);
 
   const resetGame = useCallback(() => {
+    inputRef.current.space = false;
     audioRef.current?.shutdown();
     audioRef.current = new HorrorAudio();
     const g = new GameCore(
@@ -821,6 +857,17 @@ export default function App() {
   const clockS = clockNow.getSeconds();
   const clockM = clockNow.getMinutes();
   const clockH = clockNow.getHours() % 12;
+  const guideStepId = GUIDE_STEPS[guideStep]?.id;
+  const guideCanAdvance =
+    guideStepId === 'welcome' ||
+    guideStepId === 'prox' ||
+    (guideStepId === 'cams' && guideVisited.current.size >= 4) ||
+    (guideStepId === 'thermal' && guideVisited.current.has(3)) ||
+    (guideStepId === 'signal' && (gameRef.current?.signal ?? 0) >= 85) ||
+    (guideStepId === 'parry' && guideParryDone.current) ||
+    (guideStepId === 'threat' && guideThreatSeen.current) ||
+    (guideStepId === 'breach' && guideBreachDone.current) ||
+    (guideStepId === 'adr' && (gameRef.current?.doses ?? 3) < 3);
 
   return (
     <div
@@ -998,7 +1045,14 @@ export default function App() {
                 key={i}
                 className={`hbtn cam-btn ${cam === i ? 'active' : ''} ${burned[i] ? 'burned' : ''} ${parry && parry.cam === i ? 'parry-target' : ''}`}
                 onClick={() => {
-                  if (!burned[i]) { setCam(i); audioRef.current?.uiBlip(); }
+                  if (!burned[i]) {
+                    const stepId = GUIDE_STEPS[guideStepRef.current]?.id;
+                    if (guideActiveRef.current && stepId === 'cams') guideVisited.current.add(i);
+                    if (guideActiveRef.current && stepId === 'thermal' && i === 3) guideVisited.current.add(3);
+                    if (guideActiveRef.current && stepId === 'threat' && i === 1) guideThreatSeen.current = true;
+                    setCam(i);
+                    audioRef.current?.uiBlip();
+                  }
                 }}
               >
                 <span className="cam-key">{i + 1}</span>
@@ -1019,6 +1073,7 @@ export default function App() {
             <div className="track-wrap">
               <input
                 type="range"
+                aria-label="Manual signal frequency"
                 min={20}
                 max={120}
                 step={0.5}
@@ -1074,7 +1129,38 @@ export default function App() {
           </div>
 
           {/* terminal */}
-          <div className="panel terminal">
+          <div className="touch-controls" aria-label="Touch controls">
+            <button
+              type="button"
+              className="hbtn touch-charge"
+              aria-label="Press and hold to charge the defibrillator"
+              onPointerDown={(e) => {
+                if (S.current.screen !== 'playing') return;
+                e.preventDefault();
+                inputRef.current.space = true;
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerUp={(e) => {
+                inputRef.current.space = false;
+                if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+              }}
+              onPointerCancel={() => { inputRef.current.space = false; }}
+              onLostPointerCapture={() => { inputRef.current.space = false; }}
+            >
+              HOLD TO CHARGE
+            </button>
+            {parry?.stage === 'window' && (
+              <button
+                type="button"
+                className="hbtn touch-parry"
+                onClick={() => gameRef.current?.confirmParry(sliderRef.current)}
+              >
+                CONFIRM PARRY
+              </button>
+            )}
+          </div>
+
+          <div className="panel terminal" role="log" aria-live="polite" aria-relevant="additions text">
             <p className="term-head">SYSLOG — /dev/tty0</p>
             {lines.map((l) => (
               <p key={l.id} className={`term-line ${l.danger ? 'danger' : ''} ${l.flash ? 'flash' : ''}`}>
@@ -1128,7 +1214,7 @@ export default function App() {
               <h3 className="guide-title">{GUIDE_STEPS[guideStep].title}</h3>
               <p className="guide-body">{GUIDE_STEPS[guideStep].body}</p>
               {guideStep < GUIDE_STEPS.length - 1 ? (
-                <button className="hbtn guide-next" onClick={guideNext}>
+                <button className="hbtn guide-next" onClick={guideNext} disabled={!guideCanAdvance}>
                   NEXT STEP ▶
                 </button>
               ) : (
