@@ -242,7 +242,7 @@ export class GameCore {
     }
 
     // ── parry machine ──
-    if (!this.parry && !frozen && t >= this.nextParryAt && this.melt === 0) {
+    if (!this.training && !this.parry && !frozen && t >= this.nextParryAt && this.melt === 0) {
       const live = [0, 1, 2, 3].filter((c) => !this.burned[c]);
       if (live.length > 0) {
         const pcam = live[Math.floor(Math.random() * live.length)];
