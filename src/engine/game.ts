@@ -113,7 +113,13 @@ export class GameCore {
   }
 
   camObserved(cam: number, recharging: boolean): boolean {
-    return !recharging && cam === this.reaperNode && this.reaperNode < 4 && !this.burned[cam];
+    return (
+      !recharging &&
+      cam === this.reaperNode &&
+      this.reaperNode < 4 &&
+      !this.burned[cam] &&
+      this.camOfflineUntil[cam] <= this.t
+    );
   }
 
   update(dt: number, cam: number, space: boolean) {
