@@ -785,7 +785,7 @@ export default function App() {
         g.confirmParry(sliderRef.current);
       } else if (e.key === 'x' || e.key === 'X') {
         g.adrenaline();
-
+      }
     };
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') inputRef.current.space = false;
