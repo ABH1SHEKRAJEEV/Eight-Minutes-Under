@@ -1063,7 +1063,11 @@ export default function App() {
                 key={i}
                 className={`hbtn cam-btn ${cam === i ? 'active' : ''} ${burned[i] ? 'burned' : ''} ${parry && parry.cam === i ? 'parry-target' : ''}`}
                 onClick={() => {
-                  if (!burned[i]) { setCam(i); audioRef.current?.uiBlip(); }
+                  if (!burned[i]) {
+                    if (guideActiveRef.current) guideVisited.current.add(i);
+                    setCam(i);
+                    audioRef.current?.uiBlip();
+                  }
                 }}
               >
                 <span className="cam-key">{i + 1}</span>
