@@ -886,11 +886,21 @@ export default function App() {
       <div className="crt-vignette" aria-hidden />
 
       {/* ─────────────────────────── BOOT ─────────────────────────── */}
-      {!bootReady && (
+      {bootError ? (
+        <div className="boot-screen boot-error-screen" role="alert">
+          <div className="boot-error">
+            <span className="boot-line">TAPE INITIALIZATION FAILED</span>
+            <p>{bootError}</p>
+            <button className="manual-close" onClick={() => window.location.reload()}>
+              RELOAD TAPE
+            </button>
+          </div>
+        </div>
+      ) : !bootReady ? (
         <div className="boot-screen">
           <span className="boot-line">MOUNTING TAPE 3 OF 1<span className="blink">▮</span></span>
         </div>
-      )}
+      ) : null}
 
       {/* ─────────────────────────── MENU ─────────────────────────── */}
       {screen === 'menu' && bootReady && (
@@ -1092,10 +1102,19 @@ export default function App() {
               </div>
             )}
             {parry?.stage === 'window' && (
-              <div className="parry-window">
-                <span>MATCH <b>{parry.target} Hz</b> — SNAP + [ENTER]</span>
-                <span className="parry-bar"><i ref={parryBar} /></span>
-              </div>
+              <>
+                <div className="parry-window">
+                  <span>MATCH <b>{parry.target} Hz</b> — SNAP + [ENTER]</span>
+                  <span className="parry-bar"><i ref={parryBar} /></span>
+                </div>
+                <button
+                  type="button"
+                  className="hbtn touch-parry"
+                  onClick={() => gameRef.current?.confirmParry(sliderRef.current)}
+                >
+                  DEFLECT SIGNAL
+                </button>
+              </>
             )}
           </div>
 
@@ -1109,6 +1128,22 @@ export default function App() {
               <div className="sig-fill" ref={sigFill} />
             </div>
             <p className="sig-hint">HOLD <b className="key">SPACE</b> TO CHARGE — CAMERAS OFFLINE WHILE CHARGING</p>
+            <button
+              type="button"
+              className="hbtn touch-charge"
+              aria-label="Hold to charge or discharge"
+              aria-pressed={recharging}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.currentTarget.setPointerCapture(e.pointerId);
+                inputRef.current.space = true;
+              }}
+              onPointerUp={() => { inputRef.current.space = false; }}
+              onPointerCancel={() => { inputRef.current.space = false; }}
+              onLostPointerCapture={() => { inputRef.current.space = false; }}
+            >
+              HOLD TO CHARGE / DISCHARGE
+            </button>
             <button
               className="hbtn syringe"
               data-guide="syringe"
