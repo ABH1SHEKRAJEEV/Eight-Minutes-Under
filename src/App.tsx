@@ -136,6 +136,7 @@ export default function App() {
   const gameRef = useRef<GameCore | null>(null);
   const inputRef = useRef({ space: false });
   const sliderRef = useRef(60);
+  const freqSliderRef = useRef<HTMLInputElement>(null);
   const S = useRef({
     screen: 'menu' as Screen,
     bootDone: false,
@@ -443,6 +444,10 @@ export default function App() {
   const launchRealShift = useCallback(() => {
     inputRef.current.space = false;
     sliderRef.current = 60;
+    if (freqSliderRef.current) {
+      freqSliderRef.current.value = '60';
+      window.dispatchEvent(new CustomEvent('freqmove'));
+    }
     S.current.guideMode = false;
     S.current.lastSpace = false;
     S.current.beepAcc = 0;
@@ -754,6 +759,10 @@ export default function App() {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.repeat) return;
+      if (e.key === 'Escape') {
+        setShowManual(false);
+        return;
+      }
       const g = gameRef.current;
       if (e.code === 'Space') {
         if (S.current.screen === 'playing') {
@@ -776,9 +785,7 @@ export default function App() {
         g.confirmParry(sliderRef.current);
       } else if (e.key === 'x' || e.key === 'X') {
         g.adrenaline();
-      } else if (e.key === 'Escape') {
-        setShowManual(false);
-      }
+
     };
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') inputRef.current.space = false;
@@ -820,6 +827,12 @@ export default function App() {
   }, [setScreen]);
 
   const resetGame = useCallback(() => {
+    sliderRef.current = 60;
+    if (freqSliderRef.current) {
+      freqSliderRef.current.value = '60';
+      window.dispatchEvent(new CustomEvent('freqmove'));
+    }
+    inputRef.current.space = false;
     audioRef.current?.shutdown();
     audioRef.current = new HorrorAudio();
     const g = new GameCore(
@@ -994,8 +1007,8 @@ export default function App() {
       {/* ─────────────────────────── MANUAL ─────────────────────────── */}
       {showManual && (
         <div className="manual-backdrop" onClick={() => setShowManual(false)}>
-          <div className="manual" onClick={(e) => e.stopPropagation()}>
-            <h2 className="manual-title">FIELD PROTOCOL — NIGHT SHIFT</h2>
+          <div className="manual" role="dialog" aria-modal="true" aria-labelledby="manual-heading" onClick={(e) => e.stopPropagation()}>
+            <h2 className="manual-title" id="manual-heading">FIELD PROTOCOL — NIGHT SHIFT</h2>
             <div className="manual-body">
               <section>
                 <h3>01 // THE SHIFT</h3>
@@ -1087,6 +1100,7 @@ export default function App() {
             </div>
             <div className="track-wrap">
               <input
+                ref={freqSliderRef}
                 type="range"
                 min={20}
                 max={120}
