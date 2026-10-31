@@ -2,6 +2,9 @@
 // EIGHT MINUTES UNDER — a night-shift survival vigil.
 // You are the security guard. You are also the body on the table.
 // Survive the 480-second convergence.
+//
+// Copyright (C) 2026 ABHISHEK RAJEEV — licensed under GNU GPL v3 or later
+// (see LICENSE). No warranty. <https://www.gnu.org/licenses/>
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PostRenderer } from './engine/renderer';
