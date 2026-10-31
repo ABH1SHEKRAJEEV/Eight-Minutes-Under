@@ -2,6 +2,8 @@
   "name": "react-vite-tailwind",
   "private": true,
   "version": "0.0.0",
+  "license": "GPL-3.0-or-later",
+  "author": "ABHISHEK RAJEEV",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,7 +24,10 @@
     "@vitejs/plugin-react": "5.1.1",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
-    "vite": "7.3.2",
+    "vite": "7.3.7",
     "vite-plugin-singlefile": "2.3.0"
+  },
+  "overrides": {
+    "esbuild": "0.28.1"
   }
 }
