@@ -19,8 +19,8 @@ need server-side session creation, server-side validation and rate limiting.
   injection API is used.
 - Vercel response headers harden MIME handling, framing, referrer disclosure and
   unnecessary browser permissions.
-- Vite is pinned to a patched 7.3.7 release.
-- CI installs the lockfile, type-checks, builds and runs npm audit.
+- Vite is pinned to 7.3.7 and esbuild to 0.28.1, which are outside the affected ranges audited in this patch.
+- CI installs the lockfile, type-checks, builds and fails on any npm audit finding, including low-severity issues.
 
 ## Manual regression checklist
 
@@ -35,4 +35,4 @@ need server-side session creation, server-side validation and rate limiting.
 6. On a phone, hold the charge control and use the deflect button during a parry.
 7. Navigate all controls with Tab and Shift+Tab; verify visible focus. Enable
    reduced motion and confirm intense decorative motion is suppressed.
-8. Run `npm ci`, `npm run typecheck`, `npm run build` and `npm audit`.
+8. Run `npm ci`, `npm run typecheck`, `npm run build` and `npm audit --audit-level=low`.
