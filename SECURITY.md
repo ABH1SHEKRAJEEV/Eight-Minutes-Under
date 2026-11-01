@@ -1,63 +1,50 @@
 # Security Notes — EIGHT MINUTES UNDER
 
-## What this app is
+## Application model
 
-A browser-only, single-player horror game. No backend, no accounts, no forms,
-no network calls (only Google Fonts), no cookies, no localStorage, no API keys.
-The full dependency audit is clean (`npm audit` reports 0 vulnerabilities).
+Eight Minutes Under is a static, browser-only, single-player horror game. The game engine, story script, timer and session state run in the visitor's browser. The current application has no accounts, personal-data forms, backend game state, API keys or server-side game endpoints. Google Fonts are the only expected third-party page resource.
 
-## The honest truth about "hiding the source code"
+A player can inspect or alter their own browser session. This is expected for a client-only experience and is not a server compromise. Do not use client-reported completion, elapsed time, score or game state as proof for prizes, rankings or other competitive outcomes. A future leaderboard would need server-side session creation, server-side validation and rate limiting.
 
-**Client-side code can never be hidden.** The browser must download and run the
-code to display the page, so View Source and DevTools can always read it. Any
-script that blocks right-click or F12 is bypassed in seconds and breaks the
-page for real users. This is true of every website; it is not a bug here.
+## Current safeguards
 
-What we do instead:
+- Production builds are minified; source maps and production console output are disabled. Deploy the production build, not the raw source or Vite development server.
+- The production HTML receives a Content-Security-Policy at build time. It restricts outbound connections, plugins and base-URL changes; Google Fonts are explicitly allowed where needed.
+- `vercel.json` configures response headers for MIME handling, framing, referrer disclosure and unnecessary browser permissions. Serve over HTTPS.
+- React-rendered story and log strings are static project data; the current UI does not use an HTML string-injection API.
+- No secrets, credentials or API tokens belong in this repository. Keep `.env` and local environment files out of Git.
+- Vite is pinned to 7.3.7 and esbuild is pinned to 0.28.1 through the package override to address the audited development-server advisories.
+- The GitHub quality workflow installs from the lockfile, runs the TypeScript check, builds the app and runs the dependency audit.
 
-1. **Ship a production build.** `npm run build` produces `dist/index.html` with
-   the code minified and mangled — unreadable, one 1.4 MB file, no comments,
-   no original names. This is already wired up. **Never deploy the raw source
-   folder or share the dev server URL** (`npm run dev`) — that serves the full
-   readable source and, on Windows, had known file-read vulnerabilities.
-2. **No secrets in the code.** There is nothing to steal: no keys, no tokens,
-   no server. Verified by sweep.
-3. **Content-Security-Policy** (injected into the production HTML at build
-   time): blocks all outbound connections (`connect-src 'none'`), plugins
-   (`object-src 'none'`), and `<base>` hijacking. Only Google Fonts may load.
-4. **No sourcemaps, no console output** in production builds.
+## Dependency advisories fixed (November 2026)
 
-## Repository visibility
+- `vite 7.3.2 → 7.3.7`: addresses the audited launch-editor NTLMv2 hash disclosure, editor CLI command execution, Windows `server.fs.deny` bypass and cross-origin script execution advisories.
+- `esbuild → 0.28.1` via npm override: addresses the audited Windows development-server arbitrary file-read advisory.
+- These findings affected the development server; the production static game does not expose that server.
 
-The GitHub repository is currently **public** — anyone can read the source at
-github.com. If you don't want that: repo Settings → General → Danger Zone →
-Change visibility → Private. That is a decision only you can make.
+## Manual regression checklist
 
-**Licensing:** the game is © 2026 ABHISHEK RAJEEV, released under
-**GPL-3.0-or-later** (see `LICENSE`). Anyone may copy or modify it, but any
-derivative they publish must also be GPL-3.0, keep the copyright notice, and
-stay open source. Proprietary rip-offs are a license violation.
+1. Load the game and confirm the menu renders and the boot screen exits.
+2. Block or fail one image asset; confirm a clear error and reload control appear.
+3. Run a shift, switch to the Reaper's camera, allow a feed overload, and confirm an offline feed does not freeze the Reaper.
+4. Hide the tab for 10 seconds; confirm the shift clock advances by approximately 10 seconds on return and SPACE is no longer held.
+5. Complete the guide and launch a real shift; confirm the breach overlay, camera damage, phase, doses, signal and tutorial state reset.
+6. On a phone, hold the charge control and use the deflect button during a parry.
+7. Navigate controls with Tab and Shift+Tab; verify visible focus. Enable reduced motion and confirm intense decorative motion is suppressed.
+8. Run `npm ci`, `npm run typecheck`, `npm run build` and `npm audit --audit-level=low`.
 
 ## Deployment rules
 
-- Deploy **only** the contents of `dist/` (built with `npm run build`).
-- Serve over **HTTPS**.
-- If your host supports response headers, add:
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY` (or CSP `frame-ancestors 'none'`)
-  - `Referrer-Policy: no-referrer`
+- Build with `npm run build` and deploy only the generated `dist/` output.
+- Serve over HTTPS and retain the response security headers configured for the deployment host.
+- Never share the Vite development-server URL or deploy the unbuilt source folder.
 
-## Known boundary (by design)
+## Repository visibility and licensing
 
-Game rules, the story script, and state all live in the browser. A player can
-inspect or modify their own session — no client-side game can prevent that
-without a server-authoritative design. Fine for a game; never use client-side
-results for prizes or rankings.
+The GitHub repository's visibility is controlled in Repository Settings. A public repository allows anyone to read its source; making it private is a separate owner decision.
 
-## Dependency advisories fixed (Nov 2026)
+The game is © 2026 ABHISHEK RAJEEV and is released under GPL-3.0-or-later (see `LICENSE`). Anyone may copy or modify it under that licence; derivative works distributed to others must comply with its terms and preserve applicable notices.
 
-- `vite 7.3.2 → 7.3.7`: fixes launch-editor NTLMv2 hash disclosure (GHSA-v6wh-96g9-6wx3),
-  editor CLI command execution (GHSA-r825-w8mm-5pxw), Windows `server.fs.deny`
-  bypass (GHSA-fx2h-pf6j-xcff), and cross-origin script execution (GHSA-9jrq-w75r-8gcw).
-- `esbuild → 0.28.1` (override): fixes Windows dev-server arbitrary file read (GHSA-g7r4-m6w7-qqqr).
-- All of these were dev-server-only issues; the built game was never affected.
+## Known boundary
+
+Game rules, story script and session state are client-side. A player can inspect or modify their own session. No client-only implementation can prevent that without a server-authoritative design. This is acceptable for a single-player game, but client-side results must not be trusted for prizes or rankings.
